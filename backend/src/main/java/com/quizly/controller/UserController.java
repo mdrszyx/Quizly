@@ -1,40 +1,43 @@
 package com.quizly.controller;
 
 import com.quizly.model.User;
-import com.quizly.service.UserService;
+import com.quizly.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/auth")
-public class AuthController {
+public class UserController {
 
     @Autowired
-    private UserService userService;
+    private UserRepository userRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody User user) {
-        if (userService.findByEmail(user.getEmail()).isPresent()) {
+    @PostMapping("/signup")
+    public ResponseEntity<?> signup(@RequestBody User user) {
+        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
             return ResponseEntity.badRequest().body("Email already exists!");
         }
-        userService.registerUser(user);
-        return ResponseEntity.ok("User registered successfully!");
+        if (userRepository.findByUsername(user.getUsername()).isPresent()) {
+            return ResponseEntity.badRequest().body("Username already exists!");
+        }
+        userRepository.save(user);
+        return ResponseEntity.ok("Signup successful!");
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody User user) {
-        Optional<User> existingUser = userService.findByEmail(user.getEmail());
-        if (existingUser.isPresent() &&
-                passwordEncoder.matches(user.getPassword(), existingUser.get().getPassword())) {
-            return ResponseEntity.ok("Login successful!");
+    public ResponseEntity<?> login(@RequestParam String username, @RequestParam String password) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found!"));
+        if (!user.getPassword().equals(password)) {
+            return ResponseEntity.badRequest().body("Invalid credentials!");
         }
-        return ResponseEntity.badRequest().body("Invalid email or password!");
+        return ResponseEntity.ok("Login successful!");
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        // Implementasikan logika logout, seperti menghapus token dari cache
+        return ResponseEntity.ok("Logout successful!");
     }
 }
